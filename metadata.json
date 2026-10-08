@@ -1,0 +1,6 @@
+{
+  "name": "CYBER SENTINEL - Real-Time Cyber Threat & Network Anomaly Detection",
+  "description": "Intelligent cyber threat and network anomaly detection sentinel using behavioral anomaly detection, threat classification, explainable evidence, and risk-based policy guardrails.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

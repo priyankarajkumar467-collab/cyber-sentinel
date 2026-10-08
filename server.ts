@@ -319,6 +319,7 @@ async function startServer() {
   } else {
     const distPath = path.resolve(process.cwd(), 'dist');
     if (fs.existsSync(distPath)) {
+      app.use('/cyber-sentinel', express.static(distPath));
       app.use(express.static(distPath));
       app.get('*', (_req: Request, res: Response) => {
         res.sendFile(path.join(distPath, 'index.html'));

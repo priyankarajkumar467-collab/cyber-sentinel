@@ -37,7 +37,7 @@ export function collectProjectFiles(rootDir: string = process.cwd()): ProjectFil
       const fullPath = path.join(currentDir, name);
 
       if (entry.isDirectory()) {
-        if (IGNORED_DIRS.has(name) || name.startsWith('.')) {
+        if (IGNORED_DIRS.has(name) || (name.startsWith('.') && name !== '.github')) {
           continue;
         }
         traverse(fullPath, relPath);

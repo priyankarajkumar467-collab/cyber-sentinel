@@ -40,7 +40,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ stats, loading }) =>
         </div>
         <div className="mt-3">
           <div className="text-2xl font-bold font-mono text-slate-100">
-            {loading ? '...' : (stats?.total_events.toLocaleString() || '12,480')}
+            {loading ? '...' : (stats?.total_events ? stats.total_events.toLocaleString() : '12,480')}
           </div>
           <p className="text-xs text-slate-400 mt-1">Events analyzed</p>
         </div>
@@ -56,7 +56,7 @@ export const SummaryCards: React.FC<SummaryCardsProps> = ({ stats, loading }) =>
         </div>
         <div className="mt-3">
           <div className="text-2xl font-bold font-mono text-rose-400">
-            {loading ? '...' : (stats?.threats_detected.toLocaleString() || '27')}
+            {loading ? '...' : (stats?.threats_detected ? stats.threats_detected.toLocaleString() : '27')}
           </div>
           <p className="text-xs text-slate-400 mt-1">Potential threats</p>
         </div>

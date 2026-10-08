@@ -71,6 +71,35 @@ export function collectProjectFiles(rootDir: string = process.cwd()): ProjectFil
   return files;
 }
 
+export function collectDistFiles(distDir = path.resolve(process.cwd(), 'dist')): ProjectFile[] {
+  if (!fs.existsSync(distDir)) return [];
+  const files: ProjectFile[] = [];
+
+  function traverse(currentDir: string, relativePrefix: string = '') {
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    for (const entry of entries) {
+      const relPath = relativePrefix ? `${relativePrefix}/${entry.name}` : entry.name;
+      const fullPath = path.join(currentDir, entry.name);
+      if (entry.isDirectory()) {
+        traverse(fullPath, relPath);
+      } else if (entry.isFile()) {
+        try {
+          const content = fs.readFileSync(fullPath, 'utf8');
+          files.push({
+            path: relPath.replace(/\\/g, '/'),
+            content,
+          });
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+  }
+
+  traverse(distDir);
+  return files;
+}
+
 export interface GitHubPushOptions {
   token: string;
   owner: string;
@@ -320,6 +349,78 @@ export async function pushToGitHub(
       const refErr = await createRefRes.json().catch(() => ({}));
       throw new Error(`Failed to create branch reference: ${refErr.message || createRefRes.statusText}`);
     }
+  }
+
+  // Also publish production bundle to gh-pages branch if dist exists
+  try {
+    const distFiles = collectDistFiles();
+    if (distFiles.length > 0) {
+      onProgress?.('Publishing production bundle to gh-pages');
+      const distTreeItems = distFiles.map((file) => ({
+        path: file.path,
+        mode: '100644',
+        type: 'blob',
+        content: file.content,
+      }));
+
+      const distTreeRes = await fetch(
+        `https://api.github.com/repos/${cleanOwner}/${cleanRepo}/git/trees`,
+        {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tree: distTreeItems }),
+        }
+      );
+
+      if (distTreeRes.ok) {
+        const distTreeData = await distTreeRes.json();
+        const distCommitRes = await fetch(
+          `https://api.github.com/repos/${cleanOwner}/${cleanRepo}/git/commits`,
+          {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: 'Deploy Cyber Sentinel production bundle to GitHub Pages',
+              tree: distTreeData.sha,
+              parents: [],
+            }),
+          }
+        );
+
+        if (distCommitRes.ok) {
+          const distCommitData = await distCommitRes.json();
+          const ghPagesRefRes = await fetch(
+            `https://api.github.com/repos/${cleanOwner}/${cleanRepo}/git/ref/heads/gh-pages`,
+            { headers }
+          );
+
+          if (ghPagesRefRes.ok) {
+            await fetch(
+              `https://api.github.com/repos/${cleanOwner}/${cleanRepo}/git/refs/heads/gh-pages`,
+              {
+                method: 'PATCH',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sha: distCommitData.sha, force: true }),
+              }
+            );
+          } else {
+            await fetch(
+              `https://api.github.com/repos/${cleanOwner}/${cleanRepo}/git/refs`,
+              {
+                method: 'POST',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  ref: 'refs/heads/gh-pages',
+                  sha: distCommitData.sha,
+                }),
+              }
+            );
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Could not auto-publish to gh-pages branch:', err);
   }
 
   onProgress?.('Push completed');

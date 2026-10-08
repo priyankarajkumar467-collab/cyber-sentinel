@@ -6,14 +6,16 @@ on:
       - main
   workflow_dispatch:
 
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
+# Allow only one concurrent deployment
 concurrency:
   group: 'pages'
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
@@ -37,12 +39,12 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Deploy to gh-pages branch
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          force_orphan: true
+      - name: Verify build artifacts
+        run: |
+          test -f dist/index.html || { echo "dist/index.html missing"; exit 1; }
+          grep -q "/cyber-sentinel/assets/" dist/index.html || { echo "dist/index.html missing /cyber-sentinel/assets/ reference"; exit 1; }
+          ! grep -q "/src/main.tsx" dist/index.html || { echo "dist/index.html incorrectly references /src/main.tsx"; exit 1; }
+          echo "Build verification passed: dist/index.html contains compiled assets and no source references."
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
